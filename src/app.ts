@@ -6,15 +6,22 @@ function Logger(logString: string) {
 }
 
 function WithTemplate(template: string, hookId: string) {
-  return (constructor: any) => {
-    console.log("TEMPLATE FACTORY");
-    const hookEL = document.getElementById(hookId);
-    const p = new constructor();
+  return function <T extends { new (...args: any[]): { name: string } }>(
+    originalConstructor: T
+  ) {
+    return class extends originalConstructor {
+      constructor(..._: any[]) {
+        super();
 
-    if (hookEL) {
-      hookEL.innerHTML = template;
-      hookEL.querySelector("h1")!.textContent = p.name;
-    }
+        console.log("TEMPLATE FACTORY");
+        const hookEL = document.getElementById(hookId);
+
+        if (hookEL) {
+          hookEL.innerHTML = template;
+          hookEL.querySelector("h1")!.textContent = this.name;
+        }
+      }
+    };
   };
 }
 
@@ -31,7 +38,8 @@ class Person {
 const person = new Person();
 console.log(person);
 
-//--- Properties decorators
+//---
+
 function Log(target: any, propertyName: string | Symbol) {
   console.log("Property Decorator");
 
@@ -91,3 +99,79 @@ class Product {
     return this._price * +tax;
   }
 }
+
+const book1 = new Product("Book", 22.99);
+const book2 = new Product("Book2", 22.99);
+
+console.log(book1);
+console.log(book2);
+
+//---
+
+function Autobind(
+  _target: any,
+  _methodName: string,
+  descriptor: PropertyDescriptor
+) {
+  const originalMethod = descriptor.value;
+  const adjDescriptor: PropertyDescriptor = {
+    configurable: true,
+    enumerable: false,
+    get() {
+      return originalMethod.bind(this);
+    },
+  };
+
+  return adjDescriptor;
+}
+
+class Printer {
+  message = "This Work !";
+
+  @Autobind
+  showMessage() {
+    console.log(this.message);
+  }
+}
+
+const p = new Printer();
+
+const button = document.querySelector("button") as HTMLButtonElement;
+button.addEventListener("click", p.showMessage);
+
+function Required() {}
+
+function PositiveNumber() {}
+
+function validate(obj: Object): boolean {
+  return true;
+}
+
+class Course {
+  @Required
+  title: string;
+  @PositiveNumber
+  price: number;
+
+  constructor(t: string, p: number) {
+    this.title = t;
+    this.price = p;
+  }
+}
+
+const courseForm = document.querySelector("form")!;
+courseForm.addEventListener("submit", (evt) => {
+  evt.preventDefault();
+  const titleEl = document.getElementById("title") as HTMLInputElement;
+  const priceEl = document.getElementById("price") as HTMLInputElement;
+
+  const title = titleEl.value;
+  const price = +priceEl.value;
+
+  const createdCourse = new Course(title, price);
+
+  if (!validate(createdCourse)) {
+    alert("Invalid input, please try again !");
+  }
+  console.log(createdCourse);
+});
